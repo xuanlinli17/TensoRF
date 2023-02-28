@@ -19,7 +19,7 @@ import sys
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 renderer = OctreeRender_trilinear_fast
-
+surface_renderer = OctreeRender_trilinear_surface_fast
 
 class SimpleSampler:
     def __init__(self, total, batch):
@@ -68,6 +68,14 @@ def render_test(args):
     tensorf.load(ckpt)
 
     logfolder = os.path.dirname(args.ckpt)
+
+    if args.render_surface:
+        alpha,_ = tensorf.getDenseAlpha()
+        verts, faces = convert_sdf_samples_to_mesh(alpha.cpu(),bbox=tensorf.aabb.cpu(), level=0.005)
+        os.makedirs(f'{logfolder}/imgs_train_all', exist_ok=True)
+        evaluation_surface(test_dataset,tensorf, verts, faces, args, surface_renderer, f'{logfolder}/{args.expname}/imgs_test_all/',
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+
     if args.render_train:
         os.makedirs(f'{logfolder}/imgs_train_all', exist_ok=True)
         train_dataset = dataset(args.datadir, split='train', downsample=args.downsample_train, is_stack=True)
@@ -135,7 +143,7 @@ def reconstruction(args):
         tensorf = eval(args.model_name)(aabb, reso_cur, device,
                     density_n_comp=n_lamb_sigma, appearance_n_comp=n_lamb_sh, app_dim=args.data_dim_color, near_far=near_far,
                     shadingMode=args.shadingMode, alphaMask_thres=args.alpha_mask_thre, density_shift=args.density_shift, distance_scale=args.distance_scale,
-                    pos_pe=args.pos_pe, view_pe=args.view_pe, fea_pe=args.fea_pe, featureC=args.featureC, step_ratio=args.step_ratio, fea2denseAct=args.fea2denseAct)
+                    pos_pe=args.pos_pe, view_pe=args.view_pe, fea_pe=args.fea_pe, featureC=args.featureC, step_ratio=args.step_ratio, fea2denseAct=args.fea2denseAct, n_layers=args.mlp_layers)
 
 
     grad_vars = tensorf.get_optparam_groups(args.lr_init, args.lr_basis)
@@ -145,6 +153,8 @@ def reconstruction(args):
         args.lr_decay_iters = args.n_iters
         lr_factor = args.lr_decay_target_ratio**(1/args.n_iters)
 
+    print("args.lr_decay_iters", args.lr_decay_iters)
+    print(args.lr_init, args.lr_basis)
     print("lr decay", args.lr_decay_target_ratio, args.lr_decay_iters)
     
     optimizer = torch.optim.Adam(grad_vars, betas=(0.9,0.99))

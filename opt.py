@@ -81,12 +81,15 @@ def config_parser(cmd=None):
                         help='number of pe for features')
     parser.add_argument("--featureC", type=int, default=128,
                         help='hidden feature channel in MLP')
+    parser.add_argument("--mlp_layers", type=int, default=3,
+                        help='number of layers in MLP')
     
 
 
     parser.add_argument("--ckpt", type=str, default=None,
                         help='specific weights npy file to reload for coarse network')
     parser.add_argument("--render_only", type=int, default=0)
+    parser.add_argument("--render_surface", type=int, default=0)
     parser.add_argument("--render_test", type=int, default=0)
     parser.add_argument("--render_train", type=int, default=0)
     parser.add_argument("--render_path", type=int, default=0)
