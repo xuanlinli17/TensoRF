@@ -145,7 +145,8 @@ def reconstruction(args):
                     shadingMode=args.shadingMode, alphaMask_thres=args.alpha_mask_thre, density_shift=args.density_shift, distance_scale=args.distance_scale,
                     pos_pe=args.pos_pe, view_pe=args.view_pe, fea_pe=args.fea_pe, featureC=args.featureC, step_ratio=args.step_ratio, fea2denseAct=args.fea2denseAct, n_layers=args.mlp_layers)
 
-
+    print(tensorf)
+    
     grad_vars = tensorf.get_optparam_groups(args.lr_init, args.lr_basis)
     if args.lr_decay_iters > 0:
         lr_factor = args.lr_decay_target_ratio**(1/args.lr_decay_iters)
@@ -281,6 +282,9 @@ def reconstruction(args):
                 lr_scale = args.lr_decay_target_ratio ** (iteration / args.n_iters)
             grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
+
+        if (iteration+1) == 1000 or (iteration+1) == 5000 or (iteration+1) == 10000 or (iteration+1) == 15000 or (iteration+1) == 20000 or (iteration+1) == 25000:
+            tensorf.save('{}/{}_{}.th'.format(logfolder, args.expname, iteration+1))
         
 
     tensorf.save(f'{logfolder}/{args.expname}.th')
