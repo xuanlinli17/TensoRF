@@ -27,7 +27,7 @@ def config_parser(cmd=None):
     parser.add_argument("--n_iters", type=int, default=30000)
 
     parser.add_argument('--dataset_name', type=str, default='blender',
-                        choices=['blender', 'llff', 'nsvf', 'dtu','tankstemple', 'own_data'])
+                        choices=['blender', 'llff', 'nsvf', 'dtu','tankstemple', 'own_data', 'realdata', 'unbounded'])
 
 
     # training options
@@ -103,6 +103,7 @@ def config_parser(cmd=None):
     parser.add_argument("--accumulate_decay", type=float, default=0.998)
     parser.add_argument("--fea2denseAct", type=str, default='softplus')
     parser.add_argument('--ndc_ray', type=int, default=0)
+    parser.add_argument('--unbounded', type=int, default=0)
     parser.add_argument('--nSamples', type=int, default=1e6,
                         help='sample point each ray, pass 1e6 if automatic adjust')
     parser.add_argument('--step_ratio',type=float,default=0.5)

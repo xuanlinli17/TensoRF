@@ -1,0 +1,37 @@
+
+dataset_name = unbounded
+datadir = ./data/360_v2/bicycle
+expname =  bicycle_small_vol
+basedir = ./log
+
+downsample_train = 4.0
+unbounded = 1
+
+n_iters = 100000
+batch_size = 4096
+
+N_voxel_init = 2097156 # 128**3
+N_voxel_final = 134217728 # 512**3
+upsamp_list = [2000,3000,4000,5500]
+update_AlphaMask_list = [2500, 40000000000]
+
+N_vis = -1 # vis all testing images
+vis_every = 30000
+
+render_test = 1
+render_path = 1
+
+n_lamb_sigma = [16,16,16]
+n_lamb_sh = [48,48,48]
+model_name = TensorVMSplit
+
+shadingMode = MLP_Fea
+fea2denseAct = relu
+
+view_pe = 0
+fea_pe = 0
+
+TV_weight_density = 1.5
+TV_weight_app = 1.5
+
+lr_init = 0.02

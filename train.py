@@ -46,7 +46,7 @@ def export_mesh(args):
     tensorf.load(ckpt)
 
     alpha,_ = tensorf.getDenseAlpha()
-    convert_sdf_samples_to_ply(alpha.cpu(), f'{args.ckpt[:-3]}.ply',bbox=tensorf.aabb.cpu(), level=0.005)
+    convert_sdf_samples_to_ply(alpha.cpu(), f'{args.ckpt[:-3]}.ply',bbox=tensorf.aabb.cpu(), level=0.002)
 
 
 @torch.no_grad()
@@ -56,6 +56,7 @@ def render_test(args):
     test_dataset = dataset(args.datadir, split='test', downsample=args.downsample_train, is_stack=True)
     white_bg = test_dataset.white_bg
     ndc_ray = args.ndc_ray
+    unbounded = args.unbounded
 
     if not os.path.exists(args.ckpt):
         print('the ckpt path does not exists!!')
@@ -74,25 +75,25 @@ def render_test(args):
         verts, faces = convert_sdf_samples_to_mesh(alpha.cpu(),bbox=tensorf.aabb.cpu(), level=0.005)
         os.makedirs(f'{logfolder}/imgs_train_all', exist_ok=True)
         evaluation_surface(test_dataset,tensorf, verts, faces, args, surface_renderer, f'{logfolder}/{args.expname}/imgs_test_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
 
     if args.render_train:
         os.makedirs(f'{logfolder}/imgs_train_all', exist_ok=True)
         train_dataset = dataset(args.datadir, split='train', downsample=args.downsample_train, is_stack=True)
         PSNRs_test = evaluation(train_dataset,tensorf, args, renderer, f'{logfolder}/imgs_train_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
         print(f'======> {args.expname} train all psnr: {np.mean(PSNRs_test)} <========================')
 
     if args.render_test:
         os.makedirs(f'{logfolder}/{args.expname}/imgs_test_all', exist_ok=True)
         evaluation(test_dataset,tensorf, args, renderer, f'{logfolder}/{args.expname}/imgs_test_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
 
     if args.render_path:
         c2ws = test_dataset.render_path
         os.makedirs(f'{logfolder}/{args.expname}/imgs_path_all', exist_ok=True)
         evaluation_path(test_dataset,tensorf, c2ws, renderer, f'{logfolder}/{args.expname}/imgs_path_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
 
 def reconstruction(args):
 
@@ -103,6 +104,7 @@ def reconstruction(args):
     white_bg = train_dataset.white_bg
     near_far = train_dataset.near_far
     ndc_ray = args.ndc_ray
+    unbounded = args.unbounded
 
     # init resolution
     upsamp_list = args.upsamp_list
@@ -192,7 +194,7 @@ def reconstruction(args):
 
         #rgb_map, alphas_map, depth_map, weights, uncertainty
         rgb_map, alphas_map, depth_map, weights, uncertainty = renderer(rays_train, tensorf, chunk=args.batch_size,
-                                N_samples=nSamples, white_bg = white_bg, ndc_ray=ndc_ray, device=device, is_train=True)
+                                N_samples=nSamples, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded, device=device, is_train=True)
 
         loss = torch.mean((rgb_map - rgb_train) ** 2)
 
@@ -246,7 +248,7 @@ def reconstruction(args):
 
         if iteration % args.vis_every == args.vis_every - 1 and args.N_vis!=0:
             PSNRs_test = evaluation(test_dataset,tensorf, args, renderer, f'{logfolder}/imgs_vis/', N_vis=args.N_vis,
-                                    prtx=f'{iteration:06d}_', N_samples=nSamples, white_bg = white_bg, ndc_ray=ndc_ray, compute_extra_metrics=False)
+                                    prtx=f'{iteration:06d}_', N_samples=nSamples, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded, compute_extra_metrics=False)
             summary_writer.add_scalar('test/psnr', np.mean(PSNRs_test), global_step=iteration)
 
 
@@ -283,7 +285,7 @@ def reconstruction(args):
             grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
 
-        if (iteration+1) == 1000 or (iteration+1) == 5000 or (iteration+1) == 10000 or (iteration+1) == 15000 or (iteration+1) == 20000 or (iteration+1) == 25000:
+        if (iteration+1) % 5000 == 0:
             tensorf.save('{}/{}_{}.th'.format(logfolder, args.expname, iteration+1))
         
 
@@ -294,13 +296,13 @@ def reconstruction(args):
         os.makedirs(f'{logfolder}/imgs_train_all', exist_ok=True)
         train_dataset = dataset(args.datadir, split='train', downsample=args.downsample_train, is_stack=True)
         PSNRs_test = evaluation(train_dataset,tensorf, args, renderer, f'{logfolder}/imgs_train_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
         print(f'======> {args.expname} test all psnr: {np.mean(PSNRs_test)} <========================')
 
     if args.render_test:
         os.makedirs(f'{logfolder}/imgs_test_all', exist_ok=True)
         PSNRs_test = evaluation(test_dataset,tensorf, args, renderer, f'{logfolder}/imgs_test_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
         summary_writer.add_scalar('test/psnr_all', np.mean(PSNRs_test), global_step=iteration)
         print(f'======> {args.expname} test all psnr: {np.mean(PSNRs_test)} <========================')
 
@@ -310,7 +312,7 @@ def reconstruction(args):
         print('========>',c2ws.shape)
         os.makedirs(f'{logfolder}/imgs_path_all', exist_ok=True)
         evaluation_path(test_dataset,tensorf, c2ws, renderer, f'{logfolder}/imgs_path_all/',
-                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray,device=device)
+                                N_vis=-1, N_samples=-1, white_bg = white_bg, ndc_ray=ndc_ray, unbounded=unbounded,device=device)
 
 
 if __name__ == '__main__':

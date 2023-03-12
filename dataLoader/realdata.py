@@ -10,27 +10,28 @@ from torchvision import transforms as T
 from .ray_utils import *
 
 
-class BlenderDataset(Dataset):
-    def __init__(self, datadir, split='train', downsample=1.0, is_stack=False, N_vis=-1):
+class RealdataDataset(Dataset):
+    def __init__(self, datadir, split='train', downsample=4.0, is_stack=False, N_vis=-1):
 
         self.N_vis = N_vis
         self.root_dir = datadir
         self.split = split
         self.is_stack = is_stack
-        self.img_wh = (int(800/downsample),int(800/downsample))
+        self.img_wh = (int(4000/downsample),int(6000/downsample))
+        self.downsample=downsample
+
         self.define_transforms()
 
-        self.scene_bbox = torch.tensor([[-1.5, -1.5, -1.5], [1.5, 1.5, 1.5]])
+        self.scene_bbox = torch.tensor([[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]])
         self.blender2opencv = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
         self.read_meta()
         self.define_proj_mat()
 
         self.white_bg = True
-        self.near_far = [2.0,6.0]
+        self.near_far = [0.2, 4.0]
         
         self.center = torch.mean(self.scene_bbox, axis=0).float().view(1, 1, 3)
         self.radius = (self.scene_bbox[1] - self.center).float().view(1, 1, 3)
-        self.downsample=downsample
 
     def read_depth(self, filename):
         depth = np.array(read_pfm(filename)[0], dtype=np.float32)  # (800, 800)
@@ -42,14 +43,6 @@ class BlenderDataset(Dataset):
             self.meta = json.load(f)
 
         w, h = self.img_wh
-        self.focal = 0.5 * 800 / np.tan(0.5 * self.meta['camera_angle_x'])  # original focal length
-        self.focal *= self.img_wh[0] / 800  # modify focal length to match size self.img_wh
-
-
-        # ray directions for all pixels, same for all images (same H, W, focal)
-        self.directions = get_ray_directions(h, w, [self.focal,self.focal])  # (h, w, 3)
-        self.directions = self.directions / torch.norm(self.directions, dim=-1, keepdim=True)
-        self.intrinsics = torch.tensor([[self.focal,0,w/2],[0,self.focal,h/2],[0,0,1]]).float()
 
         self.image_paths = []
         self.poses = []
@@ -57,17 +50,22 @@ class BlenderDataset(Dataset):
         self.all_rgbs = []
         self.all_masks = []
         self.all_depth = []
-        self.downsample=1.0
 
         img_eval_interval = 1 if self.N_vis < 0 else len(self.meta['frames']) // self.N_vis
         idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
+        keys = list(self.meta['frames'].keys())
         for i in tqdm(idxs, desc=f'Loading data {self.split} ({len(idxs)})'):#img_list:#
 
+            frame = self.meta['frames'][keys[i]]
 
+            self.focal = 0.5 * 4000 / np.tan(0.5 * frame['camera_angle_x'])  # original focal length     
+            self.focal *= self.img_wh[0] / 4000  # modify focal length to match size self.img_wh       
 
-            frame = self.meta['frames'][i]
+            self.directions = get_ray_directions(h, w, [self.focal,self.focal])  # (h, w, 3)
+            self.directions = self.directions / torch.norm(self.directions, dim=-1, keepdim=True)
+            self.intrinsics = torch.tensor([[self.focal,0,w/2],[0,self.focal,h/2],[0,0,1]]).float()
 
-            pose = np.array(frame['transform_matrix']) @ self.blender2opencv
+            pose = np.array(frame['transform_matrix'])
             c2w = torch.FloatTensor(pose)
             self.poses += [c2w]
 

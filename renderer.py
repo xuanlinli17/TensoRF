@@ -5,7 +5,7 @@ from models.tensoRF import TensorVM, TensorCP, raw2alpha, TensorVMSplit, AlphaGr
 from utils import *
 
 
-def OctreeRender_trilinear_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray=False, white_bg=True, is_train=False, device='cuda'):
+def OctreeRender_trilinear_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray=False, unbounded=False, white_bg=True, is_train=False, device='cuda'):
 
     # chunk = 400*400
     rgbs, alphas, depth_maps, weights, uncertainties = [], [], [], [], []
@@ -13,21 +13,21 @@ def OctreeRender_trilinear_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray
     for chunk_idx in range(N_rays_all // chunk + int(N_rays_all % chunk > 0)):
         rays_chunk = rays[chunk_idx * chunk:(chunk_idx + 1) * chunk].to(device)
     
-        rgb_map, depth_map = tensorf(rays_chunk, is_train=is_train, white_bg=white_bg, ndc_ray=ndc_ray, N_samples=N_samples)
+        rgb_map, depth_map = tensorf(rays_chunk, is_train=is_train, white_bg=white_bg, ndc_ray=ndc_ray, unbounded=unbounded, N_samples=N_samples)
 
         rgbs.append(rgb_map)
         depth_maps.append(depth_map)
     
     return torch.cat(rgbs), None, torch.cat(depth_maps), None, None
 
-def OctreeRender_trilinear_surface_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray=False, white_bg=True, is_train=False, device='cuda'):
+def OctreeRender_trilinear_surface_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray=False, unbounded=False, white_bg=True, is_train=False, device='cuda'):
 
     rgbs, alphas, depth_maps, weights, uncertainties = [], [], [], [], []
     N_rays_all = rays.shape[0]
     for chunk_idx in range(N_rays_all // chunk + int(N_rays_all % chunk > 0)):
         rays_chunk = rays[chunk_idx * chunk:(chunk_idx + 1) * chunk].to(device)
     
-        rgb_map, depth_map = tensorf.surface_render(rays_chunk, is_train=is_train, white_bg=white_bg, ndc_ray=ndc_ray, N_samples=N_samples)
+        rgb_map, depth_map = tensorf.surface_render(rays_chunk, is_train=is_train, white_bg=white_bg, ndc_ray=ndc_ray, unbounded=unbounded, N_samples=N_samples)
 
         rgbs.append(rgb_map)
         depth_maps.append(depth_map)
@@ -36,7 +36,7 @@ def OctreeRender_trilinear_surface_fast(rays, tensorf, chunk=4096, N_samples=-1,
 
 @torch.no_grad()
 def evaluation(test_dataset,tensorf, args, renderer, savePath=None, N_vis=5, prtx='', N_samples=-1,
-               white_bg=False, ndc_ray=False, compute_extra_metrics=True, device='cuda'):
+               white_bg=False, ndc_ray=False, unbounded=False, compute_extra_metrics=True, device='cuda'):
     PSNRs, rgb_maps, depth_maps = [], [], []
     ssims,l_alex,l_vgg=[],[],[]
     os.makedirs(savePath, exist_ok=True)
@@ -56,7 +56,7 @@ def evaluation(test_dataset,tensorf, args, renderer, savePath=None, N_vis=5, prt
         rays = samples.view(-1,samples.shape[-1])
 
         rgb_map, _, depth_map, _, _ = renderer(rays, tensorf, chunk=4096, N_samples=N_samples,
-                                        ndc_ray=ndc_ray, white_bg = white_bg, device=device)
+                                        ndc_ray=ndc_ray, unbounded=unbounded, white_bg = white_bg, device=device)
         rgb_map = rgb_map.clamp(0.0, 1.0)
 
         rgb_map, depth_map = rgb_map.reshape(H, W, 3).cpu(), depth_map.reshape(H, W).cpu()
@@ -104,7 +104,7 @@ def evaluation(test_dataset,tensorf, args, renderer, savePath=None, N_vis=5, prt
 
 @torch.no_grad()
 def evaluation_surface(test_dataset,tensorf, verts, faces, args, renderer, savePath=None, N_vis=5, prtx='', N_samples=-1,
-               white_bg=False, ndc_ray=False, compute_extra_metrics=True, device='cuda'):
+               white_bg=False, ndc_ray=False, unbounded=False, compute_extra_metrics=True, device='cuda'):
     PSNRs, rgb_maps, depth_maps = [], [], []
     ssims,l_alex,l_vgg=[],[],[]
     os.makedirs(savePath, exist_ok=True)
@@ -124,7 +124,7 @@ def evaluation_surface(test_dataset,tensorf, verts, faces, args, renderer, saveP
         rays = samples.view(-1,samples.shape[-1])
 
         rgb_map, _, depth_map, _, _ = renderer(rays, tensorf, chunk=4096, N_samples=N_samples,
-                                        ndc_ray=ndc_ray, white_bg = white_bg, device=device)
+                                        ndc_ray=ndc_ray, unbounded=unbounded, white_bg = white_bg, device=device)
         rgb_map = rgb_map.clamp(0.0, 1.0)
 
         rgb_map, depth_map = rgb_map.reshape(H, W, 3).cpu(), depth_map.reshape(H, W).cpu()
@@ -171,7 +171,7 @@ def evaluation_surface(test_dataset,tensorf, verts, faces, args, renderer, saveP
 
 @torch.no_grad()
 def evaluation_path(test_dataset,tensorf, c2ws, renderer, savePath=None, N_vis=5, prtx='', N_samples=-1,
-                    white_bg=False, ndc_ray=False, compute_extra_metrics=True, device='cuda'):
+                    white_bg=False, ndc_ray=False, unbounded=False, compute_extra_metrics=True, device='cuda'):
     PSNRs, rgb_maps, depth_maps = [], [], []
     ssims,l_alex,l_vgg=[],[],[]
     os.makedirs(savePath, exist_ok=True)
@@ -194,7 +194,7 @@ def evaluation_path(test_dataset,tensorf, c2ws, renderer, savePath=None, N_vis=5
         rays = torch.cat([rays_o, rays_d], 1)  # (h*w, 6)
 
         rgb_map, _, depth_map, _, _ = renderer(rays, tensorf, chunk=8192, N_samples=N_samples,
-                                        ndc_ray=ndc_ray, white_bg = white_bg, device=device)
+                                        ndc_ray=ndc_ray, unbounded=unbounded, white_bg = white_bg, device=device)
         rgb_map = rgb_map.clamp(0.0, 1.0)
 
         rgb_map, depth_map = rgb_map.reshape(H, W, 3).cpu(), depth_map.reshape(H, W).cpu()

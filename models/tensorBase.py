@@ -24,6 +24,34 @@ def raw2alpha(sigma, dist):
     return alpha, weights, T[:,-1:]
 
 
+
+def intersect_sphere(ray_o, ray_d):
+    # ray_o, ray_d: [..., 3]
+    # compute the depth of the intersection point between this ray and unit sphere
+    # note: d1 becomes negative if this midpoint is behind camera
+    d1 = -torch.sum(ray_d * ray_o, dim=-1) / torch.sum(ray_d * ray_d, dim=-1)
+    p = ray_o + d1.unsqueeze(-1) * ray_d
+    # consider the case where the ray does not intersect the sphere
+    ray_d_cos = 1. / torch.norm(ray_d, dim=-1)
+    p_norm_sq = torch.sum(p * p, dim=-1)
+    p_norm_sq = torch.clamp(p_norm_sq, max=1.0)
+
+    d2 = torch.sqrt(1. - p_norm_sq) * ray_d_cos
+
+    return d1 + d2
+
+
+def s_to_t(t_min, t_max, s):
+    t_min_inv = 1 / t_min
+    t_max_inv = 1 / t_max
+    return 1 / (s * t_max_inv + (1 - s) * t_min_inv)
+
+
+def t_to_s(t_min, t_max, t):
+    t_min_inv = 1 / t_min
+    t_max_inv = 1 / t_max
+    return (1 / t - t_min_inv) / (t_max_inv - t_min_inv)
+
 def SHRender(xyz_sampled, viewdirs, features):
     sh_mult = eval_sh_bases(2, viewdirs)[:, None]
     rgb_sh = features.view(-1, 3, sh_mult.shape[-1])
@@ -305,6 +333,82 @@ class TensorBase(torch.nn.Module):
         mask_outbbox = ((self.aabb[0] > rays_pts) | (rays_pts > self.aabb[1])).any(dim=-1)
         return rays_pts, interpx, ~mask_outbbox
 
+    def sample_ray_unbounded(self, rays_o, rays_d, is_train=True, N_samples=-1):
+        N_samples = N_samples if N_samples > 0 else self.nSamples
+        N_samples_inner = N_samples // 2
+        N_samples_outer = N_samples - N_samples_inner
+
+        # t_min = self.min_depth
+        t_min = 0.2
+        t_max = 1e6
+
+        use_bg = True
+        use_inf_norm = False  # From DVGO
+        rays_d = rays_d / torch.norm(rays_d, dim=-1, keepdim=True)
+
+        if use_bg:
+            # 1. Find the intersection of the ray with the inner sphere (from Nerf++)
+            t_s = intersect_sphere(rays_o, rays_d)
+            t_s = t_s.max()
+
+            # 2. Sample N/2 points within the inner sphere, from t_min to t_s.
+            t_inner = torch.arange(N_samples_inner)[None].float().to(rays_o.device)
+            if is_train:
+                t_inner = t_inner.repeat(rays_d.shape[-2], 1)
+                t_inner += torch.rand_like(t_inner[:, [0]])
+
+            t_inner = t_inner / N_samples_inner
+            t_inner = (t_s - t_min) * t_inner + t_min
+
+            # 3. Convert t_s to s_s (from Mip-NeRF 360)
+            s_s = t_to_s(t_min, t_max, t_s)
+
+            # 4. Sample N/2 points outside the inner sphere, from s_s to 1.0.
+            s_outer = torch.arange(N_samples_outer)[None].float().to(rays_o.device)
+            if is_train:
+                s_outer = s_outer.repeat(rays_d.shape[-2], 1)
+                s_outer += torch.rand_like(s_outer[:, [0]])
+
+            s_outer = s_outer / N_samples_outer
+            s_outer = (1.0 - s_s) * s_outer + s_s
+
+            # 5. Convert from s-space to t-space
+            t_outer = s_to_t(t_min, t_max, s_outer)
+
+            # 6. Compute sampled points in world coordinates
+            interpx = torch.cat([t_inner, t_outer], dim=-1)
+        else:
+            # Sample linearly in disparity everywhere
+            # 1. Sample N points, s=0 to 1.
+            s = torch.arange(N_samples)[None].float().to(rays_o.device)
+            if is_train:
+                s = s.repeat(rays_d.shape[-2], 1)
+                s += torch.rand_like(s[:, [0]])
+
+            s = s / N_samples
+
+            # 2. Convert from s-space to t-space (from Mip-NeRF 360)
+            interpx = s_to_t(t_min, t_max, s)
+
+        world_pts = rays_o[..., None, :] + rays_d[..., None, :] * interpx[..., None]
+
+        # 7. Perform contraction
+        assert self.aabb[1][0] == self.aabb[1][1] == self.aabb[1][2]
+        radius = self.aabb[1][0]
+
+        if use_inf_norm:
+            pts_norm = world_pts.abs().amax(dim=-1)
+        else:
+            pts_norm = torch.norm(world_pts, dim=-1)
+
+        scale = (radius - 1.0 / pts_norm[..., None]) / pts_norm[..., None]
+
+        mask_inside_inner_sphere = (pts_norm <= 1.0)[..., None]
+        contracted_pts = torch.where(mask_inside_inner_sphere, world_pts, scale * world_pts)
+
+        mask_outbbox = torch.norm(contracted_pts, dim=-1) > radius
+        return contracted_pts, interpx, ~mask_outbbox
+
     def sample_ray(self, rays_o, rays_d, is_train=True, N_samples=-1):
         N_samples = N_samples if N_samples>0 else self.nSamples
         stepsize = self.stepSize
@@ -438,7 +542,9 @@ class TensorBase(torch.nn.Module):
         return alpha
 
 
-    def forward(self, rays_chunk, white_bg=True, is_train=False, ndc_ray=False, N_samples=-1):
+    def forward(self, rays_chunk, white_bg=True, is_train=False, ndc_ray=False, unbounded=False, N_samples=-1):
+        # print("ndc_ray",ndc_ray)
+        # print("unbounded", unbounded)
 
         # sample points
         viewdirs = rays_chunk[:, 3:6]
@@ -448,6 +554,10 @@ class TensorBase(torch.nn.Module):
             rays_norm = torch.norm(viewdirs, dim=-1, keepdim=True)
             dists = dists * rays_norm
             viewdirs = viewdirs / rays_norm
+        elif unbounded:  # Unbounded 360 scenes
+            xyz_sampled, z_vals, ray_valid = self.sample_ray_unbounded(rays_chunk[:, :3], viewdirs, is_train=is_train,
+                                                                       N_samples=N_samples)
+            dists = torch.cat((z_vals[:, 1:] - z_vals[:, :-1], torch.zeros_like(z_vals[:, :1])), dim=-1)
         else:
             xyz_sampled, z_vals, ray_valid = self.sample_ray(rays_chunk[:, :3], viewdirs, is_train=is_train,N_samples=N_samples)
             dists = torch.cat((z_vals[:, 1:] - z_vals[:, :-1], torch.zeros_like(z_vals[:, :1])), dim=-1)
