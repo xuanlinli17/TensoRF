@@ -322,17 +322,6 @@ class TensorBase(torch.nn.Module):
         self.load_state_dict(ckpt['state_dict'])
 
 
-    def sample_ray_ndc(self, rays_o, rays_d, is_train=True, N_samples=-1):
-        N_samples = N_samples if N_samples > 0 else self.nSamples
-        near, far = self.near_far
-        interpx = torch.linspace(near, far, N_samples).unsqueeze(0).to(rays_o)
-        if is_train:
-            interpx += torch.rand_like(interpx).to(rays_o) * ((far - near) / N_samples)
-
-        rays_pts = rays_o[..., None, :] + rays_d[..., None, :] * interpx[..., None]
-        mask_outbbox = ((self.aabb[0] > rays_pts) | (rays_pts > self.aabb[1])).any(dim=-1)
-        return rays_pts, interpx, ~mask_outbbox
-
     def sample_ray_unbounded(self, rays_o, rays_d, is_train=True, N_samples=-1):
         N_samples = N_samples if N_samples > 0 else self.nSamples
         N_samples_inner = N_samples // 2
@@ -407,7 +396,18 @@ class TensorBase(torch.nn.Module):
         contracted_pts = torch.where(mask_inside_inner_sphere, world_pts, scale * world_pts)
 
         mask_outbbox = torch.norm(contracted_pts, dim=-1) > radius
-        return contracted_pts, interpx, ~mask_outbbox
+        return contracted_pts, interpx, ~mask_outbbox    
+
+    def sample_ray_ndc(self, rays_o, rays_d, is_train=True, N_samples=-1):
+        N_samples = N_samples if N_samples > 0 else self.nSamples
+        near, far = self.near_far
+        interpx = torch.linspace(near, far, N_samples).unsqueeze(0).to(rays_o)
+        if is_train:
+            interpx += torch.rand_like(interpx).to(rays_o) * ((far - near) / N_samples)
+
+        rays_pts = rays_o[..., None, :] + rays_d[..., None, :] * interpx[..., None]
+        mask_outbbox = ((self.aabb[0] > rays_pts) | (rays_pts > self.aabb[1])).any(dim=-1)
+        return rays_pts, interpx, ~mask_outbbox
 
     def sample_ray(self, rays_o, rays_d, is_train=True, N_samples=-1):
         N_samples = N_samples if N_samples>0 else self.nSamples

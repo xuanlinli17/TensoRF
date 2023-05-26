@@ -41,10 +41,10 @@ def average_poses(poses):
     y_ = poses[..., 1].mean(0)  # (3)
 
     # 4. Compute the x axis
-    x = normalize(np.cross(z, y_))  # (3)
+    x = normalize(np.cross(y_, z))  # (3)
 
     # 5. Compute the y axis (as z and x are normalized, y is already of norm 1)
-    y = np.cross(x, z)  # (3)
+    y = np.cross(z, x)  # (3)
 
     pose_avg = np.stack([x, y, z, center], 1)  # (3, 4)
 
@@ -171,6 +171,7 @@ class LLFFDataset(Dataset):
         # (N_images, 3, 4) exclude H, W, focal
         self.poses, self.pose_avg = center_poses(poses, self.blender2opencv)
 
+
         # Step 3: correct scale so that the nearest depth is at a little more than 1.0
         # See https://github.com/bmild/nerf/issues/34
         near_original = self.near_fars.min()
@@ -178,6 +179,16 @@ class LLFFDataset(Dataset):
         # the nearest depth is at 1/0.75=1.33
         self.near_fars /= scale_factor
         self.poses[..., 3] /= scale_factor
+        
+        # import ipdb; ipdb.set_trace()
+        
+        # obj = open("/home/sarahwei/code/diffrec/aa.obj", 'w')
+        # for i in range(self.poses.shape[0]):
+        #     obj.write("v %f %f %f\n" % (self.poses[i, 0, 3], self.poses[i, 1, 3], self.poses[i, 2, 3]))
+        # obj.close()
+
+        # from scipy.spatial.transform import Rotation as R
+        # import ipdb; ipdb.set_trace()
 
         # build rendering path
         N_views, N_rots = 120, 2
