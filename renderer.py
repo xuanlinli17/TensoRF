@@ -7,7 +7,7 @@ from utils import *
 
 def OctreeRender_trilinear_fast(rays, tensorf, chunk=4096, N_samples=-1, ndc_ray=False, unbounded=False, white_bg=True, is_train=False, device='cuda'):
 
-    chunk = 200*200
+    # chunk = 200*200
     rgbs, alphas, depth_maps, weights, uncertainties = [], [], [], [], []
     N_rays_all = rays.shape[0]
     for chunk_idx in range(N_rays_all // chunk + int(N_rays_all % chunk > 0)):
