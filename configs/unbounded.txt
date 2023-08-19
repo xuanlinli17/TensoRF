@@ -1,6 +1,6 @@
 
 dataset_name = unbounded
-datadir = ./data/360_v2/bicycle
+datadir = ./data/regfield/mipnerf360_official/stump
 expname =  bicycle_small_vol
 basedir = ./log
 
@@ -13,7 +13,7 @@ batch_size = 4096
 N_voxel_init = 2097156 # 128**3
 N_voxel_final = 262144000 # 640**3
 upsamp_list = [2000,3000,4000,5500]
-update_AlphaMask_list = [2000,4000]
+update_AlphaMask_list = [200000,400000]
 
 N_vis = -1 # vis all testing images
 vis_every = 5000
@@ -28,7 +28,7 @@ model_name = TensorVMSplit
 shadingMode = MLP_Fea
 fea2denseAct = relu
 
-view_pe = 6
+view_pe = 4
 fea_pe = 2
 
 TV_weight_density = 1.0
@@ -36,4 +36,4 @@ TV_weight_app = 1.0
 
 L1_weight_inital = 8e-4
 L1_weight_rest = 4e-4
-rm_weight_mask_thre = 1e-3
+rm_weight_mask_thre = 1e-2

@@ -194,7 +194,7 @@ class MLPRender(torch.nn.Module):
 class TensorBase(torch.nn.Module):
     def __init__(self, aabb, gridSize, device, density_n_comp = 8, appearance_n_comp = 24, app_dim = 27,
                     shadingMode = 'MLP_PE', alphaMask = None, near_far=[2.0,6.0],
-                    density_shift = -10, alphaMask_thres=0.001, distance_scale=25, rayMarch_weight_thres=0.0001,
+                    density_shift = -10, alphaMask_thres=0.001, distance_scale=1.0, rayMarch_weight_thres=0.0001,
                     pos_pe = 6, view_pe = 6, fea_pe = 6, featureC=128, step_ratio=2.0,
                     fea2denseAct = 'softplus', n_layers=3):
         super(TensorBase, self).__init__()
@@ -328,7 +328,7 @@ class TensorBase(torch.nn.Module):
         N_samples_outer = N_samples - N_samples_inner
 
         # t_min = self.min_depth
-        t_min = 0.2
+        t_min = 0.1
         t_max = 1e6
 
         use_bg = True
