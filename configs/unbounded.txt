@@ -37,3 +37,5 @@ TV_weight_app = 1.0
 L1_weight_inital = 8e-4
 L1_weight_rest = 4e-4
 rm_weight_mask_thre = 1e-2
+
+distance_scale = 1.0
