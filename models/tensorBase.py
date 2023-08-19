@@ -390,7 +390,11 @@ class TensorBase(torch.nn.Module):
         else:
             pts_norm = torch.norm(world_pts, dim=-1)
 
-        scale = (radius - 1.0 / pts_norm[..., None]) / pts_norm[..., None]
+        # # mipnerf contraction
+        # scale = (radius - 1.0 / pts_norm[..., None]) / pts_norm[..., None]
+        # anpei contraction
+        bg_len = radius - 1
+        scale = 1 / pts_norm[..., None] * ((1 + bg_len) - bg_len / pts_norm[..., None])
 
         mask_inside_inner_sphere = (pts_norm <= 1.0)[..., None]
         contracted_pts = torch.where(mask_inside_inner_sphere, world_pts, scale * world_pts)

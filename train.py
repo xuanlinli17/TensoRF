@@ -259,7 +259,8 @@ def reconstruction(args):
                 reso_mask = reso_cur
             new_aabb = tensorf.updateAlphaMask(tuple(reso_mask))
             if iteration == update_AlphaMask_list[0]:
-                tensorf.shrink(new_aabb)
+                if args.dataset_name != "unbounded":
+                    tensorf.shrink(new_aabb)
                 # tensorVM.alphaMask = None
                 L1_reg_weight = args.L1_weight_rest
                 print("continuing L1_reg_weight", L1_reg_weight)
