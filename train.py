@@ -286,8 +286,8 @@ def reconstruction(args):
             grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
 
-        if (iteration+1) % 5000 == 0:
-            tensorf.save('{}/{}_{}.th'.format(logfolder, args.expname, iteration+1))
+        # if (iteration+1) % 5000 == 0:
+        #     tensorf.save('{}/{}_{}.th'.format(logfolder, args.expname, iteration+1))
         
 
     tensorf.save(f'{logfolder}/{args.expname}.th')
