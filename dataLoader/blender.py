@@ -60,7 +60,11 @@ class BlenderDataset(Dataset):
         self.downsample=1.0
 
         img_eval_interval = 1 if self.N_vis < 0 else len(self.meta['frames']) // self.N_vis
-        idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
+        if self.split == "train":
+            # idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
+            idxs = list(range(0, 6))
+        else:
+            idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
         for i in tqdm(idxs, desc=f'Loading data {self.split} ({len(idxs)})'):#img_list:#
 
 
