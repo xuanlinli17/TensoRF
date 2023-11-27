@@ -355,6 +355,7 @@ class TensorBase(torch.nn.Module):
             # 4. Sample N/2 points outside the inner sphere, from s_s to 1.0.
             s_outer = torch.arange(N_samples_outer)[None].float().to(rays_o.device)
             if is_train:
+                import ipdb; ipdb.set_trace()
                 s_outer = s_outer.repeat(rays_d.shape[-2], 1)
                 s_outer += torch.rand_like(s_outer[:, [0]])
 

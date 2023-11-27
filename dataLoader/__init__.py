@@ -5,7 +5,7 @@ from .nsvf import NSVF
 from .tankstemple import TanksTempleDataset
 from .your_own_data import YourOwnDataset
 from .unbounded import UnboundedDataset
-
+from .dtu import DtuDataset
 
 dataset_dict = {'blender': BlenderDataset,
                'llff':LLFFDataset,
@@ -13,4 +13,5 @@ dataset_dict = {'blender': BlenderDataset,
                'nsvf':NSVF,
                 'own_data':YourOwnDataset,
                 'unbounded':UnboundedDataset,
-                'realdata': RealdataDataset}
+                'realdata': RealdataDataset,
+                'dtu': DtuDataset,}

@@ -11,9 +11,10 @@ from .ray_utils import *
 
 
 class BlenderDataset(Dataset):
-    def __init__(self, datadir, split='train', downsample=1.0, is_stack=False, N_vis=-1):
+    def __init__(self, datadir, split='train', downsample=1.0, is_stack=False, N_vis=-1, n_views=100):
 
         self.N_vis = N_vis
+        self.n_views = n_views
         self.root_dir = datadir
         self.split = split
         self.is_stack = is_stack
@@ -61,13 +62,17 @@ class BlenderDataset(Dataset):
 
         img_eval_interval = 1 if self.N_vis < 0 else len(self.meta['frames']) // self.N_vis
         if self.split == "train":
-            # idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
-            idxs = list(range(0, 6))
+            idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
+            # obj = self.root_dir.split('/')[-1]
+            # views_json = json.load(open("./views.json"))
+            # if str(self.n_views) not in views_json:
+            #     idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
+            # else:
+            #     idxs = views_json[str(self.n_views)][obj]
+            #     print("Train idxs: ", idxs)
         else:
             idxs = list(range(0, len(self.meta['frames']), img_eval_interval))
         for i in tqdm(idxs, desc=f'Loading data {self.split} ({len(idxs)})'):#img_list:#
-
-
 
             frame = self.meta['frames'][i]
 

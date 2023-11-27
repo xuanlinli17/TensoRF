@@ -160,7 +160,7 @@ class UnboundedDataset(Dataset):
         self.is_stack = is_stack
         self.downsample = downsample
 
-        r = 1.2  # Mip-NeRF 360 uses 2.0, DVGO uses 1.2
+        r = 2.0  # Mip-NeRF 360 uses 2.0, DVGO uses 1.2
         self.scene_bbox = torch.tensor([[-r, -r, -r], [r, r, r]])
         self.white_bg = False
         self.unbounded = True

@@ -20,7 +20,7 @@ def config_parser(cmd=None):
     parser.add_argument('--downsample_test', type=float, default=1.0)
 
     parser.add_argument('--model_name', type=str, default='TensorVMSplit',
-                        choices=['TensorVMSplit', 'TensorCP'])
+                        choices=['TensorVM', 'TensorVMSplit', 'TensorCP'])
 
     # loader options
     parser.add_argument("--batch_size", type=int, default=4096)
@@ -113,6 +113,7 @@ def config_parser(cmd=None):
     parser.add_argument("--white_bkgd", action='store_true',
                         help='set to render synthetic data on a white bkgd (always use for dvoxels)')
 
+    parser.add_argument("--n_views", type=int, default=100)
 
 
     parser.add_argument('--N_voxel_init',

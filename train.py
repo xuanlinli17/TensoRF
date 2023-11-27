@@ -70,6 +70,30 @@ def render_test(args):
 
     logfolder = os.path.dirname(args.ckpt)
 
+    # # vis VMSplit
+    # import matplotlib.pyplot as plt
+    # os.makedirs("features/{}".format(args.datadir.split('/')[-2]), exist_ok=True)
+    # for i in range(len(tensorf.density_plane)):
+    #     # features = tensorf.density_plane[i].permute(0, 2, 3, 1).squeeze(0).transpose(-1, -2).flatten(1)  # HWC -> HW'
+    #     features = tensorf.app_plane[i].permute(0, 2, 3, 1).squeeze(0).transpose(-1, -2).flatten(1)  # HWC -> HW'
+    #     features = features.detach().cpu().numpy()
+    #     plt.imsave("features/{}/app_feature_{}.png".format(args.datadir.split('/')[-2], i), features)
+    #     print("save")
+    
+    # exit(0)
+
+    # # vis VM
+    # import matplotlib.pyplot as plt
+    # os.makedirs("log/{}/features/".format(args.ckpt.split('/')[1]), exist_ok=True)
+    # for i in range(len(tensorf.plane_coef)):
+    #     features = tensorf.plane_coef[i].permute(0, 2, 3, 1).squeeze(0).transpose(-1, -2).flatten(1)  # HWC -> HW'
+    #     features = features.detach().cpu().numpy()
+    #     plt.imsave("log/{}/features/{}.png".format(args.ckpt.split('/')[1], i), features)
+    #     print("save")
+    
+    # exit(0)
+    
+
     if args.render_surface:
         alpha,_ = tensorf.getDenseAlpha()
         verts, faces = convert_sdf_samples_to_mesh(alpha.cpu(),bbox=tensorf.aabb.cpu(), level=0.005)
@@ -99,7 +123,7 @@ def reconstruction(args):
 
     # init dataset
     dataset = dataset_dict[args.dataset_name]
-    train_dataset = dataset(args.datadir, split='train', downsample=args.downsample_train, is_stack=False)
+    train_dataset = dataset(args.datadir, split='train', downsample=args.downsample_train, is_stack=False, n_views=args.n_views)
     test_dataset = dataset(args.datadir, split='test', downsample=args.downsample_train, is_stack=True)
     white_bg = train_dataset.white_bg
     near_far = train_dataset.near_far
@@ -134,7 +158,6 @@ def reconstruction(args):
     reso_cur = N_to_reso(args.N_voxel_init, aabb)
     nSamples = min(args.nSamples, cal_n_samples(reso_cur,args.step_ratio))
 
-
     if args.ckpt is not None:
         ckpt = torch.load(args.ckpt, map_location=device)
         kwargs = ckpt['kwargs']
@@ -148,7 +171,7 @@ def reconstruction(args):
                     pos_pe=args.pos_pe, view_pe=args.view_pe, fea_pe=args.fea_pe, featureC=args.featureC, step_ratio=args.step_ratio, fea2denseAct=args.fea2denseAct, n_layers=args.mlp_layers)
 
     print(tensorf)
-    
+
     grad_vars = tensorf.get_optparam_groups(args.lr_init, args.lr_basis)
     if args.lr_decay_iters > 0:
         lr_factor = args.lr_decay_target_ratio**(1/args.lr_decay_iters)
