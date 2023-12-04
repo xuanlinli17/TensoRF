@@ -70,11 +70,13 @@ def evaluation(test_dataset,tensorf, args, renderer, savePath=None, N_vis=5, prt
 
             if compute_extra_metrics:
                 ssim = rgb_ssim(rgb_map, gt_rgb, 1)
-                l_a = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'alex', tensorf.device)
-                l_v = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'vgg', tensorf.device)
+                # l_a = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'alex', tensorf.device)
+                # l_v = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'vgg', tensorf.device)
                 ssims.append(ssim)
-                l_alex.append(l_a)
-                l_vgg.append(l_v)
+                l_alex.append(0)
+                l_vgg.append(0)
+                # l_alex.append(l_a)
+                # l_vgg.append(l_v)
 
         # rgb_map = rgb_to_srgb(rgb_map[...,0:3])
         rgb_map = (rgb_map.numpy() * 255).astype('uint8')
@@ -137,11 +139,13 @@ def evaluation_surface(test_dataset,tensorf, verts, faces, args, renderer, saveP
 
             if compute_extra_metrics:
                 ssim = rgb_ssim(rgb_map, gt_rgb, 1)
-                l_a = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'alex', tensorf.device)
-                l_v = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'vgg', tensorf.device)
+                # l_a = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'alex', tensorf.device)
+                # l_v = rgb_lpips(gt_rgb.numpy(), rgb_map.numpy(), 'vgg', tensorf.device)
                 ssims.append(ssim)
-                l_alex.append(l_a)
-                l_vgg.append(l_v)
+                l_alex.append(0)
+                l_vgg.append(0)
+                # l_alex.append(l_a)
+                # l_vgg.append(l_v)
 
         # rgb_map = rgb_to_srgb(rgb_map[...,0:3])
         rgb_map = (rgb_map.numpy() * 255).astype('uint8')
